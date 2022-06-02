@@ -5,12 +5,13 @@
 CR EQU 0DH;13
 LF EQU 0AH;10
 X DW ?
-Y DB ?
+Y DW ?
 Z DW ?
-P DB ?
+P DW ?
 M DB ?
 N DW 0
 Q DW ?
+IDX DW ?
 ARR DW X DUP(0)
 NEWLINE DB CR, LF, '$'
 
@@ -48,8 +49,8 @@ MAIN PROC
         CMP X, 0
         JNG EXIT
         INC X
-        MOV P, '2'
-        AND P, 0FH
+        MOV P, '3'
+        AND P, 000FH
         JMP INIT_INPUT
     
     INIT_INPUT:
@@ -96,7 +97,8 @@ MAIN PROC
     	;XOR CX, CX
     	CMP X, BX
     	;CHANGED FOR TIME BEGIN -> JNG SORT
-    	JNG PROCESS_DISPLAY
+    	;JNG PROCESS_DISPLAY 
+    	JNG PRE_SORT
     	JMP INIT_INPUT
 
     NEGATIVE:
@@ -112,6 +114,61 @@ MAIN PROC
         ADD AX, Q
         MOV CX, AX
         JMP NEGATIVE
+    
+    ;Insertion Sort
+    ;for step from 2 to last index:
+    ;   key=arr[step]
+    ;   j=step-1
+    ;   while(j>=1 and key<arr[j]):
+    ;       arr[j+1]=arr[j]
+    ;       j=j-1
+    ;   arr[j+1]=key                                                             
+                                                                                  
+                                                                                 
+    PRE_SORT:                                                                      
+        MOV CX, X                                                                   
+        SUB CX, 1
+        MOV IDX, 0
+        JMP SORT    
+    SORT:                                                                          
+        ADD IDX, 1
+        CMP IDX, CX
+        JNL PROCESS_DISPLAY
+        MOV BX, P
+        MOV DX, ARR[BX]  ;key=array[step]
+        MOV Y, BX
+        SUB Y, 2         ;j=step-1
+        
+        ;step->P
+        ;j->Y
+        ;key->DX
+        WHILE:
+            ;while(j>=1 and key<array[j])
+            MOV BX, Y
+            CMP DX, ARR[BX]
+            JNL LABEL1
+            
+            MOV AX, ARR[BX]
+            MOV BX, Y
+            ADD BX, 2
+            MOV ARR[BX], AX        ;array[j+1]=array[j]
+            CMP Y, 1
+            JE SPECIAL
+            SUB Y, 2
+            JMP WHILE
+                
+        LABEL1:
+            ADD BX, 2
+            MOV ARR[BX], DX       ;array[j+1]=key
+            ADD P, 2
+            JMP SORT
+            
+        SPECIAL:
+            MOV BX, 1
+            MOV ARR[BX], DX
+            ADD P, 2
+            JMP SORT
+        
 
     PROCESS_NEGATIVE:
         NEG CX
