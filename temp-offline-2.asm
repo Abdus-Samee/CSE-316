@@ -9,12 +9,16 @@ Y DW ?
 Z DW ?
 P DW ?
 M DB ?
-N DW 0
+N DW ?
 Q DW ?
-LB DW 1
+LB DW ?
 UB DW ?
 NF DB 'NOT FOUND$'
+SIZE_PROMPT DB 'ENTER SIZE OF ARRAY: $'
+ENTER_PROMPT DB CR, LF, 'ENTER NUMBERS: $'
+DISPLAY_PROMPT DB CR, LF, 'SORTED ARRAY: $'
 SEARCH_PROMPT DB CR, LF, 'ENTER NUMBER TO SEARCH: $'
+CONT_SEARCH DB CR, LF, 'DO YOU WANT TO CONTIUE SEARCHING(Y/N)? $'
 IDX DW ?
 ARR DW X DUP(0)
 NEWLINE DB CR, LF, '$'
@@ -23,13 +27,19 @@ NEWLINE DB CR, LF, '$'
 MAIN PROC
     ;DATA SEGMENT INITIALIZATION
     MOV AX, @DATA
-    MOV DS, AX
+    MOV DS, AX  
     
-    LEA SI, ARR
-    MOV Z, '1'
-    AND Z, 000FH
-    MOV BX, 1
-    MOV X, 0
+    START:    
+        LEA SI, ARR
+        MOV Z, '1'
+        AND Z, 000FH
+        MOV BX, 1
+        MOV X, 0
+        MOV LB, 1
+        MOV N, 0
+        LEA DX, SIZE_PROMPT
+        MOV AH, 09H
+        INT 21H
     
     TOTAL_NUM:
         MOV AH, 1
@@ -37,7 +47,7 @@ MAIN PROC
         CMP AL, ' '
         JE INVALID_CHECK
         CMP AL, 2DH
-        JE EXIT
+        JE TOTAL_NUM_NEG
     	MOV M, 10
     	AND M, 0FH
         AND AL, 0FH
@@ -47,7 +57,26 @@ MAIN PROC
         ADD AX, DX
         MOV X, AX
         JMP TOTAL_NUM
+        
+    TOTAL_NUM_NEG:
+        MOV AH, 1
+        INT 21H
+        CMP AL, ' '
+        JE NEG_INPUT
+    	MOV M, 10
+    	AND M, 0FH
+        AND AL, 0FH
+        MOV DL, AL
+        MOV AX, X
+        MUL M
+        ADD AX, DX
+        MOV X, AX
+        JMP TOTAL_NUM_NEG
     
+    NEG_INPUT:
+        NEG X
+        JMP INVALID_CHECK
+        
     INVALID_CHECK:
         ;check for invalid input
         CMP X, 0
@@ -55,16 +84,13 @@ MAIN PROC
         INC X
         MOV P, '3'
         AND P, 000FH
+        LEA DX, ENTER_PROMPT
+        MOV AH, 09H
+        INT 21H
         JMP INIT_INPUT
     
     INIT_INPUT:
         XOR CX, CX
-        ;MOV CL, AL
-        ;MOV X, CL  
-        ;AND CL, 000FH ;value of input "n" intact for future use
-        ;AND X, 000FH  ;n in integer form
-        ;INC X
-        ;INC CL
         JMP INPUT
     INPUT:
         MOV AH, 1
@@ -84,24 +110,13 @@ MAIN PROC
         JMP INPUT 
         
     PROCESS_INPUT:
-        ;LEA DX, NEWLINE
-        ;MOV AH, 09H
-        ;INT 21H
         MOV DX, BX
         ADD BX, N
     	MOV WORD PTR ARR[BX], CX
     	MOV BX, DX
     	MOV N, BX
     	INC BX
-    	;XOR AX, AX
-    	;MOV AL, BL
-    	;MOV N, AX
-    	;INC BL
-    	;MOV DL, X
-    	;XOR CX, CX
-    	CMP X, BX
-    	;CHANGED FOR TIME BEGIN -> JNG SORT
-    	;JNG PROCESS_DISPLAY 
+    	CMP X, BX 
     	JNG PRE_SORT
     	JMP INIT_INPUT
 
@@ -178,6 +193,9 @@ MAIN PROC
             JMP SORT
 	    
 	PROCESS_DISPLAY:
+	    LEA DX, DISPLAY_PROMPT
+	    MOV AH, 09H
+	    INT 21H
 	    MOV BX, '1'
 	    AND BX, 000FH
 	    MOV Z, 1
@@ -210,9 +228,28 @@ MAIN PROC
         MOV AH, 09H
         INT 21H
         CALL SEARCH_INPUT
+        XOR DX, DX
+        MOV DL, CR
+        MOV AH, 2
+        INT 21H
+        MOV DL, LF
+        INT 21H
         MOV DX, CX  ;INPUT IN DX
         CALL BINARY_SEARCH
-        JMP EXIT   
+        XOR DX, DX
+        LEA DX, CONT_SEARCH
+        MOV AH, 09H
+        INT 21H
+        MOV AH, 1
+        INT 21H
+        CMP AL, 'Y'
+        JE PROCESS_SEARCH
+        MOV DL, CR
+        MOV AH, 2
+        INT 21H
+        MOV DL, LF
+        INT 21H
+        JMP START   
     
     EXIT:
     	;DOS EXIT
