@@ -11,6 +11,10 @@ P DW ?
 M DB ?
 N DW 0
 Q DW ?
+LB DW 1
+UB DW ?
+NF DB 'NOT FOUND$'
+SEARCH_PROMPT DB CR, LF, 'ENTER NUMBER TO SEARCH: $'
 IDX DW ?
 ARR DW X DUP(0)
 NEWLINE DB CR, LF, '$'
@@ -114,6 +118,10 @@ MAIN PROC
         ADD AX, Q
         MOV CX, AX
         JMP NEGATIVE
+        
+    PROCESS_NEGATIVE:
+        NEG CX
+	    JMP PROCESS_INPUT
     
     ;Insertion Sort
     ;for step from 2 to last index:
@@ -168,11 +176,6 @@ MAIN PROC
             MOV ARR[BX], DX
             ADD P, 2
             JMP SORT
-        
-
-    PROCESS_NEGATIVE:
-        NEG CX
-	    JMP PROCESS_INPUT
 	    
 	PROCESS_DISPLAY:
 	    MOV BX, '1'
@@ -197,11 +200,19 @@ MAIN PROC
         INC Z
         MOV AX, Z
         CMP AX, X
-        JNL EXIT
+        JNL PROCESS_SEARCH
         JMP DISPLAY
         
 
-    ;PROBLEM WITH REGISTER CL IN SORT SECTION   
+    PROCESS_SEARCH:
+        XOR DX, DX
+        LEA DX, SEARCH_PROMPT
+        MOV AH, 09H
+        INT 21H
+        CALL SEARCH_INPUT
+        MOV DX, CX  ;INPUT IN DX
+        CALL BINARY_SEARCH
+        JMP EXIT   
     
     EXIT:
     	;DOS EXIT
@@ -257,8 +268,98 @@ PRINT PROC
         JMP DISPLAY_INPUT
         
     EXIT_PROC:
-        RET
-            
+        RET           
 PRINT ENDP
+
+SEARCH_INPUT PROC
+    XOR CX, CX
+    INP:
+        MOV AH, 1
+        INT 21H
+        CMP AL, 2DH
+        JE NEGTV
+        CMP AL, ' '
+        JE EXIT_INP
+    	MOV M, 10
+    	AND M, 0FH
+        AND AL, 0FH
+        MOV DL, AL
+        MOV AX, CX
+        MUL M
+        ADD AX, DX
+        MOV CX, AX
+        JMP INP
+
+    NEGTV:
+        MOV AH, 1
+        INT 21H
+        CMP AL, ' '
+        JE PROCESS_NEGTV
+        AND AL, 0FH
+        XOR AH, AH
+        MOV Q, AX
+        MOV AX, CX
+        MUL M
+        ADD AX, Q
+        MOV CX, AX
+        JMP NEGTV
+    
+    PROCESS_NEGTV:
+        NEG CX
+	    JMP EXIT_INP
+	        
+    EXIT_INP:
+        RET       
+SEARCH_INPUT ENDP
+
+BINARY_SEARCH PROC
+    MOV AX, X
+    SUB AX, 1
+    MOV UB, AX
+    MOV CL, 1
+    
+    SEARCH:
+        MOV BX, 0
+        ADD BX, UB
+        CMP BX, LB
+        JNGE UNEQUAL
+        ADD BX, LB
+        SHR BX, CL
+        SHL BX, CL
+        SUB BX, 1
+        CMP DX, ARR[BX]
+        JE EQUAL
+        JL LESS
+        JMP GREATER
+    
+    LESS:
+        SHR BX, CL
+        ADD BX, 1
+        SUB BX, 1
+        MOV UB, BX
+        JMP SEARCH
+        
+    GREATER:
+        SHR BX, CL
+        ADD BX, 1
+        ADD BX, 1
+        MOV LB, BX
+        JMP SEARCH
+        
+    EQUAL:
+        ;PRINT INDEX BX
+        MOV AX, BX
+        CALL PRINT
+        JMP EXIT_SEARCH
+    
+    UNEQUAL:
+        LEA DX, NF
+        MOV AH, 09H
+        INT 21H
+        JMP EXIT_SEARCH
+        
+    EXIT_SEARCH:
+        RET    
+BINARY_SEARCH ENDP
 
 END MAIN
